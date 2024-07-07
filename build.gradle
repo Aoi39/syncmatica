@@ -22,6 +22,8 @@ dependencies {
 	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
 	modImplementation "curse.maven:litematica-${project.litematica_minecraft_version}-308892:${project.litematica_fileid}"
 	modImplementation "curse.maven:malilib-${project.litematica_minecraft_version}-303119:${project.malilib_fileid}"
 
