@@ -1,9 +1,18 @@
 package ch.endte.syncmatica.mixin;
 
-import java.util.function.Consumer;
-
+import ch.endte.syncmatica.Context;
+import ch.endte.syncmatica.Syncmatica;
+import ch.endte.syncmatica.communication.ExchangeTarget;
 import ch.endte.syncmatica.communication.PacketType;
+import ch.endte.syncmatica.communication.ServerCommunicationManager;
 import ch.endte.syncmatica.network.ChannelManager;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.minecraft.network.NetworkThreadUtils;
+import net.minecraft.network.PacketByteBuf;
+import net.minecraft.network.packet.c2s.play.CustomPayloadC2SPacket;
+import net.minecraft.server.network.ServerPlayNetworkHandler;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -11,19 +20,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import ch.endte.syncmatica.Context;
-import ch.endte.syncmatica.Syncmatica;
-import ch.endte.syncmatica.communication.ExchangeTarget;
-import ch.endte.syncmatica.communication.ServerCommunicationManager;
-import net.minecraft.network.ClientConnection;
-import net.minecraft.network.NetworkThreadUtils;
-import net.minecraft.network.PacketByteBuf;
-import net.minecraft.network.packet.c2s.play.CustomPayloadC2SPacket;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import java.util.function.Consumer;
 
 
 @Mixin(value = ServerPlayNetworkHandler.class, priority = 998)
@@ -37,14 +34,23 @@ public abstract class MixinServerPlayNetworkHandler {
     @Shadow
     public ServerPlayerEntity player;
 
-    @Inject(method = "<init>", at = @At("TAIL"))
-    public void onConnect(final MinecraftServer server, final ClientConnection connection, final ServerPlayerEntity player, final CallbackInfo ci) {
+    @Inject(method = "<clinit>", at = @At("TAIL"))
+    private static void clinit(CallbackInfo ci) {
+        ServerPlayConnectionEvents.JOIN.register(((handler, sender, server) -> {
+            ((MixinServerPlayNetworkHandler) (Object) handler).onPlayerJoin();
+        }));
+        ServerPlayConnectionEvents.DISCONNECT.register(((handler, server) -> {
+            ((MixinServerPlayNetworkHandler) (Object) handler).onPlayerLeave();
+        }));
+    }
+
+    @Unique
+    private void onPlayerJoin() {
         operateComms(sm -> sm.onPlayerJoin(getExchangeTarget(), player));
     }
 
-    @Inject(method = "onDisconnected", at = @At("HEAD"))
-    public void onDisconnected(final Text reason, final CallbackInfo ci) {
-        ChannelManager.onDisconnected();
+    @Unique
+    private void onPlayerLeave() {
         operateComms(sm -> sm.onPlayerLeave(getExchangeTarget()));
     }
 
